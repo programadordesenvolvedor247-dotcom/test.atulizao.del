@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Painel Global HD</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- PRELOAD IMAGEM -->
+<link rel="preload" as="image" href="https://i.im.ge/2026/01/30/eTYGd1.images-1.jpeg">
+
+<style>
+:root{
+  --red:#ef4444;
+  --red-dark:#dc2626;
+  --text:#f8fafc;
+  --input:rgba(55,65,81,0.85);
+}
+*{box-sizing:border-box;}
+html,body{width:100%;height:100%;margin:0;}
+body{
+  font-family:Arial,sans-serif;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  background:
+    linear-gradient(rgba(0,0,0,.6),rgba(0,0,0,.6)),
+    url("https://i.im.ge/2026/01/30/eTYGd1.images-1.jpeg") center/cover no-repeat;
+}
+
+.box{
+  background:rgba(0,0,0,.75);
+  width:100%;
+  max-width:700px;
+  padding:35px;
+  border-radius:22px;
+  border:2px solid var(--red);
+  color:var(--text);
+  box-shadow:0 0 30px rgba(239,68,68,.6);
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+}
+
+.title-glow{
+  text-align:center;
+  color:#ff2d2d;
+  font-weight:900;
+  text-shadow:0 0 15px #ff2d2d;
+}
+
+input,button{
+  padding:16px;
+  border-radius:14px;
+  font-size:16px;
+}
+
+input{
+  border:1px solid #7f1d1d;
+  background:var(--input);
+  color:#fff;
+}
+
+button{
+  border:none;
+  cursor:pointer;
+  color:#fff;
+  font-weight:700;
+  background:linear-gradient(135deg,var(--red),var(--red-dark));
+}
+
+.chat-btn{
+  background:transparent;
+  border:2px solid var(--red);
+}
+
+.hidden{display:none;}
+
+.create-container{
+  display:flex;
+  gap:10px;
+}
+
+ul{padding:0;max-height:250px;overflow:auto;}
+li{
+  list-style:none;
+  background:#1f2933;
+  padding:10px;
+  border-radius:10px;
+  margin-bottom:8px;
+  display:flex;
+  justify-content:space-between;
+}
+
+.remove{
+  background:red;
+  border:none;
+  color:#fff;
+  border-radius:6px;
+  padding:3px 7px;
+  cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div class="box" id="loginBox">
+  <h2 class="title-glow">🔐 KEY PREMIUM</h2>
+  <input id="loginUser" placeholder="Digite sua Key">
+  <button onclick="login()">Entrar</button>
+  <button class="chat-btn" onclick="abrirChat()">💬 Chat</button>
+</div>
+
+<!-- USUÁRIO -->
+<div class="box hidden" id="userBox">
+  <h2 class="title-glow">ACESSO LIBERADO</h2>
+  <p style="text-align:center">Redirecionando...</p>
+  <button onclick="logout()">Sair</button>
+</div>
+
+<!-- ADMIN -->
+<div class="box hidden" id="adminBox">
+  <h2 class="title-glow">PAINEL ADMIN</h2>
+
+  <div class="create-container">
+    <input id="newUser" placeholder="Nova Key">
+    <input id="diasUser" type="number" placeholder="Dias">
+    <button onclick="criarUsuario()">Criar</button>
+  </div>
+
+  <ul id="listaUsuarios"></ul>
+  <button onclick="logout()">Sair</button>
+</div>
+
+<!-- FIREBASE -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import {
+  getFirestore, collection, addDoc, query, where,
+  getDocs, onSnapshot, deleteDoc, doc, Timestamp
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBRU1COppsLe_QJmmRmFRASW-w_5pdUMSw",
+  authDomain: "teste-f56fb.firebaseapp.com",
+  projectId: "teste-f56fb"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const usersRef = collection(db,"usuarios");
+
+const ADMIN = "admin15996529204sas";
+const LINK = "https://keycrusher.xyz/";
+
+window.login = async ()=>{
+  const key = loginUser.value.trim();
+  if(!key) return alert("Digite a key");
+
+  if(key === ADMIN){
+    loginBox.classList.add("hidden");
+    adminBox.classList.remove("hidden");
+    ouvir();
+    return;
+  }
+
+  const q = query(usersRef, where("user","==",key));
+  const snap = await getDocs(q);
+  if(snap.empty) return alert("Key inválida");
+
+  const data = snap.docs[0].data();
+  if(data.expira.toDate() < new Date())
+    return alert("Key expirada");
+
+  loginBox.classList.add("hidden");
+  userBox.classList.remove("hidden");
+  setTimeout(()=>location.href=LINK,1000);
+};
+
+window.criarUsuario = async ()=>{
+  const user = newUser.value.trim();
+  const dias = Number(diasUser.value);
+  if(!user || dias < 1) return alert("Erro");
+
+  const expira = Timestamp.fromDate(
+    new Date(Date.now() + dias*86400000)
+  );
+  await addDoc(usersRef,{user,expira});
+  newUser.value="";
+  diasUser.value="";
+};
+
+function ouvir(){
+  onSnapshot(usersRef, snap=>{
+    listaUsuarios.innerHTML="";
+    snap.forEach(d=>{
+      const li=document.createElement("li");
+      li.innerHTML=`${d.data().user}<button class="remove">X</button>`;
+      li.querySelector("button").onclick=()=>{
+        deleteDoc(doc(db,"usuarios",d.id));
+      };
+      listaUsuarios.appendChild(li);
+    });
+  });
+}
+
+window.logout = ()=>location.reload();
+</script>
+
+<script>
+function abrirChat(){
+  window.open("https://www.chat-avenue.com/","_blank");
+}
+</script>
+
+</body>
+</html>
